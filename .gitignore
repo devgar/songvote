@@ -1,0 +1,28 @@
+# Dependencias
+node_modules/
+
+# Base de datos SQLite (datos de runtime, no van al repo)
+db/*.sqlite
+db/*.sqlite-wal
+db/*.sqlite-shm
+
+# Variables de entorno locales
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Bun
+.bun/
+
+# direnv
+.direnv/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/

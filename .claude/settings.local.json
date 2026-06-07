@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nix shell *)",
+      "Read(//nix/var/nix/profiles/default/bin/**)",
+      "Read(//nix/**)"
+    ]
+  }
+}

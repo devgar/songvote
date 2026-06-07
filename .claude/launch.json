@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "songvote",
+      "runtimeExecutable": "/nix/store/jgl1hjr0cf6s32jcnqmkp44av4flamap-bun-1.3.13/bin/bun",
+      "runtimeArgs": ["run", "src/index.ts"],
+      "port": 3000
+    }
+  ]
+}

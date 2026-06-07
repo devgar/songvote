@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SongVote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #f0ece3;
+      --ink:     #111008;
+      --muted:   #8a8070;
+      --rule:    #ccc5b5;
+      --red:     #d63c2a;
+      --green:   #2a7a3b;
+      --surface: #e6e1d6;
+      --hover:   #ddd8cc;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'IBM Plex Mono', monospace;
+      min-height: 100vh;
+    }
+
+    .shell { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 36px 0 12px;
+      border-bottom: 2px solid var(--ink);
+    }
+    .wordmark {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3.2rem;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+    .wordmark span { color: var(--red); }
+    .header-meta { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; border-bottom: 1px solid var(--rule); margin-bottom: 32px; }
+    .tab {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 14px 20px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: var(--ink); }
+    .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+    /* ── Song rows ── */
+    .song-row {
+      display: grid;
+      grid-template-columns: 36px 64px 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--rule);
+      animation: fadeIn 0.25s ease both;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .rank {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      color: var(--rule);
+      text-align: right;
+    }
+
+    .thumb { width: 64px; height: 44px; object-fit: cover; display: block; filter: grayscale(20%); }
+    .thumb-placeholder { width: 64px; height: 44px; background: var(--surface); }
+
+    .song-info { min-width: 0; }
+    .song-title {
+      font-size: 0.82rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .song-artist { font-size: 0.68rem; color: var(--muted); margin-bottom: 3px; }
+    .song-link { font-size: 0.62rem; color: var(--muted); text-decoration: none; letter-spacing: 0.05em; }
+    .song-link:hover { color: var(--red); }
+
+    .vote-col { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 60px; }
+    .vote-count { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; line-height: 1; }
+    .vote-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      padding: 4px 8px;
+      border: 1px solid var(--rule);
+      background: none;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .vote-btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); background: var(--hover); }
+    .vote-btn.voted { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .vote-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── States ── */
+    .state-msg {
+      padding: 60px 0;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .loading-bar {
+      height: 2px;
+      background: var(--ink);
+      width: 0%;
+      animation: load 0.7s ease-out forwards;
+      margin-bottom: 32px;
+    }
+    @keyframes load { to { width: 100%; } }
+
+    /* ── Add view ── */
+    .add-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid var(--ink);
+      margin-bottom: 24px;
+      animation: fadeIn 0.2s ease both;
+    }
+    .add-field {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--rule);
+    }
+    .add-field:last-of-type { border-bottom: none; }
+    .add-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 14px;
+      white-space: nowrap;
+      width: 72px;
+      flex-shrink: 0;
+    }
+    .add-input {
+      flex: 1;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      padding: 13px 14px;
+      border: none;
+      border-left: 1px solid var(--rule);
+      background: var(--bg);
+      color: var(--ink);
+      outline: none;
+      min-width: 0;
+    }
+    .add-input::placeholder { color: var(--muted); }
+    .add-input:focus { background: var(--hover); }
+
+    .add-preview {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--rule);
+      animation: fadeIn 0.2s ease both;
+    }
+    .add-preview img { width: 80px; height: 45px; object-fit: cover; flex-shrink: 0; filter: grayscale(15%); }
+    .add-preview-info { min-width: 0; }
+    .add-preview-title { font-size: 0.78rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .add-preview-channel { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
+
+    .add-submit {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      padding: 14px 28px;
+      background: var(--ink);
+      color: var(--bg);
+      border: none;
+      border-top: 1px solid var(--ink);
+      cursor: pointer;
+      align-self: stretch;
+      transition: background 0.15s;
+    }
+    .add-submit:hover:not(:disabled) { background: #2a2820; }
+    .add-submit:disabled { opacity: 0.4; cursor: default; }
+
+    .add-error { font-size: 0.7rem; color: var(--red); margin-bottom: 16px; display: none; letter-spacing: 0.04em; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--ink);
+      color: var(--bg);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      padding: 11px 20px;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 100;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="wordmark">Song<span>Vote</span></div>
+    <div class="header-meta">Lista compartida · Vota tu canción</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="votes" onclick="switchView('votes')">▶ Votaciones</button>
+    <button class="tab" data-view="search" onclick="switchView('search')">+ Añadir canción</button>
+  </nav>
+
+  <!-- VOTES VIEW -->
+  <section id="view-votes">
+    <div id="votes-loading" class="loading-bar"></div>
+    <div id="votes-list"></div>
+  </section>
+
+  <!-- ADD VIEW -->
+  <section id="view-search" style="display:none">
+    <div class="add-form">
+      <div class="add-preview" id="add-preview">
+        <img id="add-preview-thumb" src="" alt="" />
+        <div class="add-preview-info">
+          <div class="add-preview-title" id="add-preview-title"></div>
+          <div class="add-preview-channel" id="add-preview-channel"></div>
+        </div>
+      </div>
+      <div class="add-field">
+        <span class="add-label">URL</span>
+        <input class="add-input" id="add-url" type="url"
+               placeholder="https://www.youtube.com/watch?v=… o youtu.be/…"
+               oninput="onUrlInput()" onpaste="setTimeout(onUrlInput,0)" />
+      </div>
+      <div class="add-field">
+        <span class="add-label">Título</span>
+        <input class="add-input" id="add-title" placeholder="Nombre de la canción"
+               onkeydown="if(event.key==='Enter') submitAdd()" />
+      </div>
+      <div class="add-field">
+        <span class="add-label">Artista</span>
+        <input class="add-input" id="add-artist" placeholder="Nombre del artista"
+               onkeydown="if(event.key==='Enter') submitAdd()" />
+      </div>
+      <button class="add-submit" id="add-btn" onclick="submitAdd()" disabled>Añadir y votar</button>
+    </div>
+    <div class="add-error" id="add-error"></div>
+  </section>
+
+</div>
+<div id="toast"></div>
+
+<script>
+  const API = '';
+
+  let songs   = [];
+  let myVotes = new Set(JSON.parse(localStorage.getItem('sv_votes') || '[]'));
+
+  loadVotes();
+  setInterval(loadVotes, 10000);
+
+  // ── Views ──────────────────────────────────────────────────────────────
+  function switchView(v) {
+    document.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.view === v));
+    document.getElementById('view-votes').style.display  = v === 'votes'  ? '' : 'none';
+    document.getElementById('view-search').style.display = v === 'search' ? '' : 'none';
+    if (v === 'search') document.getElementById('add-url').focus();
+  }
+
+  // ── Votes view ─────────────────────────────────────────────────────────
+  async function loadVotes() {
+    try {
+      const r = await fetch(`${API}/songs`);
+      songs = await r.json();
+      renderVotes();
+    } catch {
+      document.getElementById('votes-list').innerHTML =
+        '<p class="state-msg">No se pudo conectar con la API</p>';
+    } finally {
+      document.getElementById('votes-loading').style.display = 'none';
+    }
+  }
+
+  function renderVotes() {
+    const el = document.getElementById('votes-list');
+    if (!songs.length) {
+      el.innerHTML = '<p class="state-msg">Aún no hay canciones — sé el primero en añadir una</p>';
+      return;
+    }
+    el.innerHTML = songs.map((s, i) => {
+      const voted = myVotes.has(s.id);
+      return `
+        <div class="song-row" style="animation-delay:${i * 0.035}s">
+          <div class="rank">${i + 1}</div>
+          ${s.thumb_url
+            ? `<img class="thumb" src="${s.thumb_url}" loading="lazy" alt="" />`
+            : `<div class="thumb-placeholder"></div>`}
+          <div class="song-info">
+            <div class="song-title">${esc(s.title)}</div>
+            <div class="song-artist">${esc(s.artist)}</div>
+            <a class="song-link" href="${s.youtube_url}" target="_blank" rel="noreferrer">yt music ↗</a>
+          </div>
+          <div class="vote-col">
+            <div class="vote-count">${s.votes}</div>
+            <button class="vote-btn ${voted ? 'voted' : ''}"
+              onclick="toggleVote('${s.id}', ${JSON.stringify(s.title)}, ${JSON.stringify(s.artist)}, ${voted})"
+            >${voted ? '✓ votado' : 'votar'}</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function toggleVote(id, title, artist, hasVoted) {
+    try {
+      const res = await fetch(`${API}/songs/${id}/vote`, {
+        method: hasVoted ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: hasVoted ? undefined : JSON.stringify({ title, artist }),
+      });
+      if (res.status === 409) {
+        toast(hasVoted ? 'No tienes voto registrado' : 'Ya votaste por esta canción (misma IP)');
+        return;
+      }
+      if (!res.ok) { toast('Error al votar'); return; }
+      const updated = await res.json();
+      hasVoted ? myVotes.delete(id) : myVotes.add(id);
+      localStorage.setItem('sv_votes', JSON.stringify([...myVotes]));
+      const idx = songs.findIndex(s => s.id === id);
+      if (idx !== -1) songs[idx] = updated;
+      songs.sort((a, b) => b.votes - a.votes || a.created_at.localeCompare(b.created_at));
+      renderVotes();
+      toast(hasVoted ? 'Voto retirado' : '¡Voto registrado!');
+    } catch { toast('Error de red'); }
+  }
+
+  // ── Add view ───────────────────────────────────────────────────────────
+
+  // Extracts YouTube video ID from any known URL format
+  function extractVideoId(raw) {
+    const s = raw.trim();
+    // youtu.be/<id>
+    let m = s.match(/youtu\.be\/([A-Za-z0-9_\-]{11})/);
+    if (m) return m[1];
+    // youtube.com/watch?v=<id>  or  music.youtube.com/watch?v=<id>
+    m = s.match(/[?&]v=([A-Za-z0-9_\-]{11})/);
+    if (m) return m[1];
+    // youtube.com/embed/<id>  or  /shorts/<id>
+    m = s.match(/(?:embed|shorts)\/([A-Za-z0-9_\-]{11})/);
+    if (m) return m[1];
+    // bare 11-char ID
+    m = s.match(/^([A-Za-z0-9_\-]{11})$/);
+    if (m) return m[1];
+    return null;
+  }
+
+  let _oembedTimer = null;
+
+  function onUrlInput() {
+    const raw = document.getElementById('add-url').value;
+    const id  = extractVideoId(raw);
+    showAddErr('');
+    setPreview(null);
+    document.getElementById('add-btn').disabled = true;
+
+    if (!id) return;
+
+    // Debounce: wait 400 ms after last keystroke before hitting oEmbed
+    clearTimeout(_oembedTimer);
+    _oembedTimer = setTimeout(() => fetchOembed(id), 400);
+  }
+
+  async function fetchOembed(id) {
+    const ytUrl = `https://www.youtube.com/watch?v=${id}`;
+    try {
+      const res  = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(ytUrl)}&format=json`
+      );
+      if (!res.ok) { showAddErr('URL no válida o vídeo no disponible'); return; }
+      const data = await res.json();
+
+      // Pre-fill title and artist only if the fields are empty
+      const titleEl  = document.getElementById('add-title');
+      const artistEl = document.getElementById('add-artist');
+      if (!titleEl.value)  titleEl.value  = data.title       ?? '';
+      if (!artistEl.value) artistEl.value = data.author_name ?? '';
+
+      setPreview({
+        thumb: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`,
+        title: data.title,
+        channel: data.author_name,
+      });
+      document.getElementById('add-btn').disabled = false;
+    } catch {
+      showAddErr('No se pudo obtener información del vídeo');
+    }
+  }
+
+  function setPreview(data) {
+    const el = document.getElementById('add-preview');
+    if (!data) { el.style.display = 'none'; return; }
+    document.getElementById('add-preview-thumb').src   = data.thumb;
+    document.getElementById('add-preview-title').textContent   = data.title;
+    document.getElementById('add-preview-channel').textContent = data.channel;
+    el.style.display = 'flex';
+  }
+
+  async function submitAdd() {
+    const raw    = document.getElementById('add-url').value;
+    const id     = extractVideoId(raw);
+    const title  = document.getElementById('add-title').value.trim();
+    const artist = document.getElementById('add-artist').value.trim();
+
+    if (!id)     { showAddErr('URL no reconocida'); return; }
+    if (!title)  { showAddErr('Introduce el título'); return; }
+    if (!artist) { showAddErr('Introduce el artista'); return; }
+
+    const btn = document.getElementById('add-btn');
+    btn.disabled = true; btn.textContent = 'Añadiendo…';
+    showAddErr('');
+
+    const thumb = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+
+    try {
+      const res = await fetch(`${API}/songs/${id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, artist, thumb_url: thumb }),
+      });
+
+      if (res.status === 409) {
+        toast('Ya votaste por esta canción desde tu IP');
+        btn.disabled = false; btn.textContent = 'Añadir y votar';
+        return;
+      }
+      if (!res.ok) { showAddErr('Error al añadir'); btn.disabled = false; btn.textContent = 'Añadir y votar'; return; }
+
+      const song = await res.json();
+      myVotes.add(id);
+      localStorage.setItem('sv_votes', JSON.stringify([...myVotes]));
+
+      const idx = songs.findIndex(s => s.id === id);
+      if (idx !== -1) songs[idx] = song; else songs.push(song);
+      songs.sort((a, b) => b.votes - a.votes || a.created_at.localeCompare(b.created_at));
+
+      toast('✓ Canción añadida y votada');
+
+      // Reset form
+      ['add-url','add-title','add-artist'].forEach(id => document.getElementById(id).value = '');
+      setPreview(null);
+      btn.textContent = 'Añadir y votar';
+
+      setTimeout(() => switchView('votes'), 600);
+    } catch {
+      showAddErr('Error de red');
+      btn.disabled = false; btn.textContent = 'Añadir y votar';
+    }
+  }
+
+  // ── Utils ──────────────────────────────────────────────────────────────
+  function showAddErr(msg) {
+    const el = document.getElementById('add-error');
+    el.textContent = msg; el.style.display = msg ? '' : 'none';
+  }
+
+  let _tt;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
